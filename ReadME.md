@@ -6,7 +6,7 @@ official_full_functionality_demo
 # Python Bindding ([Dearpygui](https://github.com/hoffstadt/DearPyGui))
 ## Demo
 
-![](.assets\\my-demo.PNG)
+![](./.assets/my-demo.PNG)
 
 
 # [Imgui](https://github.com/ocornut/imgui) (c++ implementation on windos platform)
