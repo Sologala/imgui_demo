@@ -3,17 +3,6 @@ cmake_minimum_required(VERSION 3.12) # FetchContent is available in 3.11+
 project(imgui VERSION 0.0.1)
 message("START Prepare Imgui Library")
 
-set(BACKEND_DX ON)
-set(PLATFORM_TYPE win)
-
-set(ENABLE_DXSDK OFF) # Directx SDK june 2010
-set(ENABLE_WINDXSDK OFF) # Windows Kits 10
-set(WINDOWKIT_VERSION 10) # folder folder version
-set(WINDOWKIT_VERSION_UPDATE 10.0.19041.0) # sub folder folder version
-set(WINDOW_BIT x86) # arm, arm64, x64, x86
-
-set(DIRECTX_VERSION 12) # ex. 9, 10, 11, 12
-
 # headers and paths
 set(CPP_INCLUDE_DIRS "")
 set(CPP_SOURCE_FILES "")
@@ -26,8 +15,6 @@ ADD_DEFINITIONS(-DUNICODE)
 ADD_DEFINITIONS(-D_UNICODE)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /UMBCS /D_UNICODE /DUNICODE")
 
-# Directx win32 settings
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -38,11 +25,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
-set(DIRECTX_LIBS "") # ex. d3d11, d3dx11d, dxguid
-
-#testing...
-set(ENABLE_DIRECTXHEADERS OFF)
-set(ENABLE_DIRECTXTK12 OFF)
 set(ENABLE_IMGUI ON)
 
 if(ENABLE_IMGUI)
@@ -76,8 +58,22 @@ if(ENABLE_IMGUI)
 endif()
 
 
-if (NOT)
+
+if (WIN32)
   message("set IMGUI backend DirctX")
+  set(ENABLE_DXSDK OFF) # Directx SDK june 2010
+  set(ENABLE_WINDXSDK OFF) # Windows Kits 10
+  set(WINDOWKIT_VERSION 10) # folder folder version
+  set(WINDOWKIT_VERSION_UPDATE 10.0.19041.0) # sub folder folder version
+  set(WINDOW_BIT x86) # arm, arm64, x64, x86
+
+  set(ENABLE_DIRECTXHEADERS OFF)
+  set(ENABLE_DIRECTXTK12 OFF)
+  set(DIRECTX_VERSION 12) # ex. 9, 10, 11, 12
+  set(DIRECTX_LIBS "") # ex. d3d11, d3dx11d, dxguid
+# Directx win32 settings
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE")
+
   if(ENABLE_DXSDK)
     if( DEFINED ENV{DXSDK_DIR} ) # system path var
       set( DX_DIR $ENV{DXSDK_DIR})
@@ -195,7 +191,10 @@ if (NOT)
   list(APPEND CPP_SOURCE_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp)
   list(APPEND CPP_HEADER_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.h)
 
-elseif(TRUE)
+  
+
+elseif(UNIX)
+
   FetchContent_Declare(
       glfw
       GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -214,39 +213,47 @@ elseif(TRUE)
     set(GLFW_INSTALL OFF)
     set(GLFW_VULKAN_STATIC OFF)
 
+    set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+    set(CMAKE_HAVE_THREADS_LIBRARY 1)
+    set(CMAKE_USE_WIN32_THREADS_INIT 0)
+    set(CMAKE_USE_PTHREADS_INIT 1)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+
     # Bring the populated content into the build
     add_subdirectory(${glfw_SOURCE_DIR} ${glfw_BINARY_DIR})
   endif() 
   #opengl add backend
   message("set IMGUI backend opengl + glfw")
   list(APPEND CPP_SOURCE_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp)
-  list(APPEND CPP_SOURCE_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h)
+  list(APPEND CPP_HEADER_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h)
   list(APPEND CPP_SOURCE_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
   list(APPEND CPP_HEADER_FILES ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.h)
-
-  if(WIN32)
-    target_link_libraries(${PROJECT_NAME} opengl32 glfw)
-    else()
-    target_link_libraries(${PROJECT_NAME} GL glfw)
-  endif()
 endif()
-
-
-message("CMAKE_CURRENT_SOURCE_DIR  >>> " ${CMAKE_CURRENT_SOURCE_DIR})
-message("IMGUI_INCLUDE_DIRS  >>> " ${CPP_INCLUDE_DIRS})
-
-
 
 add_library(imgui
   ${CPP_HEADER_FILES}
   ${CPP_SOURCE_FILES}
 )
-link_libraries( ${DIRECTX_LIBS})
-include_directories(${CPP_INCLUDE_DIRS})
+
+
+if (WIN32)
+    target_link_libraries(imgui PUBLIC ${DIRECTX_LIBS}) 
+elseif(UNIX)
+    find_package( OpenGL REQUIRED )
+    find_package( GLEW REQUIRED )
+    target_link_libraries(imgui PUBLIC ${OPENGL_LIBRARIES} glfw ${GLEW_LIBRARIES} pthread)
+    target_include_directories(imgui PUBLIC ${GLEW_INCLUDE_DIRS})
+endif()
+
+
+message("CMAKE_CURRENT_SOURCE_DIR  >>> " ${CMAKE_CURRENT_SOURCE_DIR})
+message("IMGUI_INCLUDE_DIRS  >>> " ${CPP_INCLUDE_DIRS})
+# target_include_directories(imgui PUBLIC
+#     ${CPP_INCLUDE_DIRS}
+# )
 target_include_directories(imgui PUBLIC
-    # ${CPP_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${imgui_SOURCE_DIR}/backends>
+    $<BUILD_INTERFACE:${imgui_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CPP_INCLUDE_DIRS}>
     $<INSTALL_INTERFACE:imgui>
 )
-
-
